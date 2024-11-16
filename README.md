@@ -1,6 +1,6 @@
 # LLM Context Builder
 
-Search for files locally or in a GitHub repository.
+Generate LLM Context for local or files in a GitHub repository.
 It can filter by file extensions, ignore specified directories, and optionally print file contents.
 
 ## Features
