@@ -20,12 +20,16 @@ struct Args {
     github_url: Option<String>,
 
     /// List of file extensions to search for
-    #[arg(short, long)]
+    #[arg(short, long, value_delimiter = ' ', num_args = 1..)]
     extensions: Vec<String>,
 
     /// List of directories to ignore
-    #[arg(short, long, default_value = "")]
+    #[arg(short, long, value_delimiter = ' ', num_args = 1..)]
     ignored_dirs: Vec<String>,
+
+    /// List of files to ignore
+    #[arg(short, long, value_delimiter = ' ', num_args = 1..)]
+    ignored_files: Vec<String>,
 
     /// Flag to print file contents
     #[arg(short, long)]
@@ -142,12 +146,17 @@ fn find_files(
     directory: &Path,
     extensions: &[String],
     ignored_dirs: &[String],
+    ignored_files: &[String],
     print_contents: bool,
 ) -> Result<(), Box<dyn error::Error>> {
-    for entry in WalkDir::new(directory)
-        .into_iter()
-        .filter_entry(|e| !ignored_dirs.contains(&e.file_name().to_string_lossy().to_string()))
-    {
+    for entry in WalkDir::new(directory).into_iter().filter_entry(|e| {
+        let file_name = e.file_name().to_string_lossy();
+        if e.file_type().is_dir() {
+            !ignored_dirs.contains(&file_name.to_string())
+        } else {
+            !ignored_files.contains(&file_name.to_string())
+        }
+    }) {
         let entry = entry?;
         if entry.file_type().is_file() {
             let file_path = entry.path();
@@ -198,7 +207,7 @@ fn main() -> Result<(), Box<dyn error::Error>> {
             let search_path = extracted_path.join(folder_path);
             if !search_path.exists() {
                 warn!(
-                    "Specified folder '{}' not found in the repository.",
+                    "Specified folder '{}' does not exist in the repository.",
                     search_path.display()
                 );
                 return Ok(());
@@ -215,7 +224,9 @@ fn main() -> Result<(), Box<dyn error::Error>> {
         &search_path,
         &args.extensions,
         &args.ignored_dirs,
+        &args.ignored_files, // Pass ignored_files to find_files
         args.print_contents,
     )?;
+
     Ok(())
 }
